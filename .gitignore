@@ -3,3 +3,7 @@
 *.o
 *.d
 .my_shell_history*
+
+# Local study materials
+/docs/INTERVIEW_GUIDE.md
+/AOS_Assignment_2_M25_V1.pdf

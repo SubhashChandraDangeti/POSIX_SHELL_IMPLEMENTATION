@@ -1,7 +1,7 @@
 # Manual practice checklist; these comments are documentation, not MyShell syntax.
 # Launch ./myshell from the repository root and enter the commands individually.
 pwd
-echo "AOS Assignment 2"
+echo "hello from MyShell"
 ls -al .
 cd files
 pwd

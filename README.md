@@ -4,7 +4,7 @@
 
 Run commands, connect pipelines, redirect input and output, and manage foreground and background jobs—all from a custom interactive prompt.
 
-[Quick Start](#quick-start) · [Features](#features) · [Usage](#usage) · [Testing](#testing) · [Design Guide](docs/DESIGN.md) · [Interview Guide](docs/INTERVIEW_GUIDE.md)
+[Quick Start](#quick-start) · [Features](#features) · [Usage](#usage) · [Testing](#testing) · [Design Guide](docs/DESIGN.md)
 
 ```text
 <username@hostname:~> echo "hello shell" | tr a-z A-Z
@@ -16,8 +16,6 @@ HELLO SHELL
 <username@hostname:~> jobs
 [1] Running 12345 sleep 10
 ```
-
-Built for **Advanced Operating Systems — Assignment 2**, Monsoon 2025. It covers the assignment's twelve feature groups and adds `jobs`, `fg`, and `bg` for managing stopped processes. This is an educational shell with a defined syntax subset.
 
 ## Features
 
@@ -126,8 +124,7 @@ printf 'echo hello | tr a-z A-Z\npwd\nexit\n' | ./myshell
 ├── utils/                    # Parsing, completion, and path helpers
 ├── tests/                    # Parser, integration, and terminal tests
 ├── docs/
-│   ├── DESIGN.md             # Architecture and resource ownership
-│   └── INTERVIEW_GUIDE.md    # Explanations, demo, and resume wording
+│   └── DESIGN.md             # Architecture and resource ownership
 ├── files/                    # Sample files for manual practice
 ├── commands.txt              # Manual practice checklist
 ├── Makefile
@@ -154,31 +151,7 @@ All tests are written in C++ and use isolated temporary directories and history 
 | Guide | What you will find |
 | --- | --- |
 | [Design walkthrough](docs/DESIGN.md) | Parsing, descriptor ownership, process groups, terminal handoff, and error handling |
-| [Interview preparation](docs/INTERVIEW_GUIDE.md) | System-call explanations, common questions, a demonstration, and resume bullets |
 | [Practice checklist](commands.txt) | Commands and interactive behaviors to try yourself |
-| [Assignment specification](AOS_Assignment_2_M25_V1.pdf) | Original requirements and implementation constraints |
-
-<details>
-<summary><strong>Assignment coverage and source files</strong></summary>
-
-| Requirement | Main implementation |
-| --- | --- |
-| 1. Dynamic prompt | `Main.cpp`, `utils/helpers.cpp` |
-| 2. `cd`, `echo`, `pwd` | `builtins/cd.cpp`, `builtins/echo.cpp`, `builtins/pwd.cpp` |
-| 3. `ls` with `-a` and `-l` | `builtins/ls.cpp` |
-| 4. Foreground and background commands | `system/system.cpp` |
-| 5. `pinfo [pid]` | `builtins/pinfo.cpp` |
-| 6. Recursive `search` | `builtins/search.cpp` |
-| 7. Input/output redirection | `utils/parser.cpp`, `system/system.cpp` |
-| 8. Pipelines | `system/system.cpp` |
-| 9. Redirection within pipelines | `system/system.cpp` |
-| 10. Terminal signals | `system/system.cpp`, `Main.cpp` |
-| 11. Tab completion | `utils/completion.cpp` |
-| 12. Persistent history and arrow navigation | `builtins/history.cpp`, `Main.cpp` |
-
-The scanner uses `strtok` for ordinary whitespace-delimited spans while handling quotes and operators separately. Required built-ins are implemented directly. The code does not use `system`, `popen`, `pclose`, `std::filesystem`, or the `PWD`/`OLDPWD` environment variables. Readline provides editing without direct curses API calls.
-
-</details>
 
 <details>
 <summary><strong>Syntax and execution details</strong></summary>
@@ -212,6 +185,6 @@ Tab completes a unique match, extends a common prefix, or displays multiple cand
 
 ## Scope and Limitations
 
-MyShell implements the assignment's shell features rather than the full POSIX shell language. Variable and command substitution, globbing, `&&`/`||`, multiline input, user-specific tilde expansion, descriptor-specific redirects such as `2>`, and `pipefail` are outside its scope.
+MyShell supports interactive command execution with a focused subset of shell syntax. Variable and command substitution, globbing, `&&`/`||`, multiline input, user-specific tilde expansion, descriptor-specific redirects such as `2>`, and `pipefail` are outside its scope.
 
-Pipeline size is bounded by operating-system resources. `ls` supports the required flags but does not reproduce every GNU option, locale rule, or ACL/security-context marker. `pinfo` relies on Linux `/proc`; inaccessible or disappearing process data is reported as unavailable.
+Pipeline size is bounded by operating-system resources. `ls` supports `-a` and `-l` but does not reproduce every GNU option, locale rule, or ACL/security-context marker. `pinfo` relies on Linux `/proc`; inaccessible or disappearing process data is reported as unavailable.

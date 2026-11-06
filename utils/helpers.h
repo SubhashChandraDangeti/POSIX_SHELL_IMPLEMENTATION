@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-// The assignment's home is the launch directory, independent of $HOME.
+// The shell's home is the launch directory, independent of $HOME.
 void setShellHome();
 const std::string& shellHome();
 std::string currentDirectory();
