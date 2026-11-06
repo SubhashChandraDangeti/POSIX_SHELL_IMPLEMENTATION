@@ -1,0 +1,23 @@
+# Manual practice checklist; these comments are documentation, not MyShell syntax.
+# Launch ./myshell from the repository root and enter the commands individually.
+pwd
+echo "AOS Assignment 2"
+ls -al .
+cd files
+pwd
+cd ~
+cd -
+cd ~
+search search.txt
+search missing-file.txt
+pinfo
+echo first > /tmp/myshell-practice.txt
+echo second >> /tmp/myshell-practice.txt
+cat < /tmp/myshell-practice.txt | tr a-z A-Z
+seq 1 200000 | head -n 10 | tail -n 3
+sleep 2 & echo foreground-ready
+jobs
+history 5
+# Interactive checks: pinf<Tab>, cat fi<Tab>, Up/Down arrows.
+# Run: sleep 30 | cat; press Ctrl-Z; enter jobs, bg, fg; press Ctrl-C.
+# Press Ctrl-D at an empty prompt to exit.

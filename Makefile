@@ -1,31 +1,40 @@
-CXX = g++
-CXXFLAGS = -Wall -g
+CXX ?= g++
+CPPFLAGS ?=
+CXXFLAGS ?= -std=c++17 -Wall -Wextra -Wpedantic -Wshadow -g
+LDLIBS ?= -lreadline
 
-TARGET = myshell
+TARGET := myshell
+SOURCES := Main.cpp $(wildcard builtins/*.cpp system/*.cpp utils/*.cpp)
+OBJECTS := $(patsubst %.cpp,build/%.o,$(SOURCES))
+DEPS := $(OBJECTS:.o=.d)
 
-SRCS = Main.cpp \
-       builtins/cd.cpp \
-       builtins/pwd.cpp \
-       builtins/echo.cpp \
-       builtins/ls.cpp \
-       builtins/pinfo.cpp \
-       builtins/search.cpp \
-       builtins/history.cpp \
-       utils/helpers.cpp \
-       system/system.cpp
-
-OBJS = $(SRCS:.cpp=.o)
-
-# Add readline and history libraries
-LIBS = -lreadline -lhistory
-
+.PHONY: all clean test test-interactive
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+$(TARGET): $(OBJECTS)
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+build/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+build/parser_test: tests/parser_test.cpp utils/parser.cpp utils/parser.h utils/helpers.cpp utils/helpers.h
+	@mkdir -p build
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/parser_test.cpp utils/parser.cpp utils/helpers.cpp -o $@
+
+build/integration_test: tests/integration_test.cpp
+	@mkdir -p build
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -lutil -o $@
+
+test: $(TARGET) build/parser_test build/integration_test
+	./build/parser_test
+	./build/integration_test ./$(TARGET)
+
+test-interactive: $(TARGET) build/integration_test
+	./build/integration_test ./$(TARGET) --interactive
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -rf build
+	rm -f $(TARGET) Main.o builtins/*.o system/*.o utils/*.o
+
+-include $(DEPS)

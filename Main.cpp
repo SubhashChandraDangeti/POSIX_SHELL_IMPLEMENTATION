@@ -1,77 +1,96 @@
-#include <iostream>
-#include <string>
-#include <vector>
-#include <unistd.h>
-#include <pwd.h>
-#include <limits.h>
-#include <readline/readline.h>
-#include <readline/history.h>
-#include <signal.h>
-
-#include "builtins/cd.h"
-#include "builtins/pwd.h"
-#include "builtins/echo.h"
-#include "builtins/ls.h"
-#include "utils/helpers.h"
-#include "system/system.h"
-#include "builtins/pinfo.h"
-#include "builtins/search.h"
 #include "builtins/history.h"
+#include "system/system.h"
+#include "utils/completion.h"
+#include "utils/helpers.h"
+#include "utils/parser.h"
+#include <cerrno>
+#include <cstdlib>
+#include <iostream>
+#include <limits.h>
+#include <pwd.h>
+#include <readline/readline.h>
+#include <stdexcept>
+#include <unistd.h>
 
+namespace {
+Executor* activeExecutor = nullptr;
 
-using namespace std;
+int onReadlineEvent() {
+    if (consumePromptInterrupt()) {
+        if (activeExecutor) activeExecutor->setLastStatus(130);
+        rl_replace_line("", 0);
+        rl_crlf();
+        rl_on_new_line();
+        rl_redisplay();
+    }
+    if (activeExecutor && activeExecutor->reapBackground()) {
+        rl_on_new_line();
+        rl_redisplay();
+    }
+    return 0;
+}
 
-string shellHomeDir;
+std::string prompt() {
+    const auto* account = getpwuid(geteuid());
+    const std::string user = account ? account->pw_name : std::to_string(geteuid());
+    char hostname[HOST_NAME_MAX + 1] = {};
+    if (gethostname(hostname, HOST_NAME_MAX) < 0) return "<" + user + "@unknown:" + getFormattedCWD() + "> ";
+    return "<" + user + "@" + hostname + ":" + getFormattedCWD() + "> ";
+}
+
+bool readBatchLine(std::string& line) {
+    // Read exactly one line. Buffered iostream reads could steal stdin bytes
+    // that the next external command (for example cat) should receive.
+    for (;;) {
+        char byte;
+        const auto length = read(STDIN_FILENO, &byte, 1);
+        if (length < 0 && errno == EINTR) continue;
+        if (length < 0) throw std::runtime_error("cannot read command input");
+        if (length == 0) return !line.empty();
+        if (byte == '\n') return true;
+        line += byte;
+    }
+}
+}
 
 int main() {
-    // 1. Save shell's home directory
-    setShellHome();
-
-    // Load previous history from file
-    loadHistory();
-    signal(SIGCHLD, handle_sigchld); //tp avoid zombie processes
-    // Shell loop
-    while (true) {
-        string username = getpwuid(geteuid())->pw_name;
-        char hostname[HOST_NAME_MAX];
-        gethostname(hostname, HOST_NAME_MAX);
-        string cwd = getFormattedCWD();
-
-        string prompt = "<" + username + "@" + hostname + ":" + cwd + "> ";
-        char *input_cstr = readline(prompt.c_str());
-
-        if (!input_cstr) break; // if user enter Ctrl+D then input_cstr return null
-        string input_line(input_cstr);
-        free(input_cstr);
-
-        if (!input_line.empty()) {
-            add_history(input_line.c_str());  // keep readline’s in-memory history (for arrow keys)
-            addToHistory(input_line);         // update our persistent history (~/.my_shell_history)
+    try {
+        setShellHome();
+        loadHistory();
+        const bool interactive = isatty(STDIN_FILENO);
+        Executor executor(interactive);
+        activeExecutor = &executor;
+        if (interactive) {
+            // The executor owns signal behavior; readline owns editing only.
+            rl_catch_signals = 0;
+            rl_event_hook = onReadlineEvent;
+            initializeCompletion();
         }
-
-
-        vector<string> commands = splitCommand(input_line, ";");
-        for (auto &cmd : commands) {
-            trimSpaces(cmd);
-            if (cmd.empty()) continue;
-
-            vector<string> args = splitCommand(cmd);
-            if (args.empty()) continue;
-            if (args[0] == "pwd") runPWD();
-            else if (args[0] == "echo") runEcho(args);
-            else if (args[0] == "cd") runCD(args);
-            else if(args[0]=="ls") runLS(args);
-            else if (args[0] == "pinfo")  runPinfo(args);
-            else if (args[0] == "search") runSearch(args);
-            else if (args[0] == "history") runHistory(args); 
-            else {
-                runSystemCommand(args);
+        while (!executor.exiting()) {
+            executor.reapBackground();
+            std::string line;
+            if (interactive) {
+                char* input = readline(prompt().c_str());
+                if (!input) { std::cout << '\n'; break; }
+                line = input;
+                free(input);
+            } else if (!readBatchLine(line)) break;
+            addToHistory(line);
+            try {
+                for (const auto& pipeline : parseLine(line)) {
+                    executor.execute(pipeline);
+                    if (executor.exiting()) break;
+                }
+            } catch (const std::exception& error) {
+                std::cerr << "myshell: " << error.what() << '\n';
+                executor.setLastStatus(2);
             }
-
         }
+        activeExecutor = nullptr;
+        rl_event_hook = nullptr;
+        return executor.exitStatus();
+    } catch (const std::exception& error) {
+        std::cerr << "myshell: " << error.what() << '\n';
+        return 1;
     }
-    saveHistory();   // persist before exiting
-    cout << "\nShell terminated." << endl;
-    return 0;
-
 }

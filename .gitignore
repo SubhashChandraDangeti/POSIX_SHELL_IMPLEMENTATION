@@ -1,0 +1,5 @@
+/build/
+/myshell
+*.o
+*.d
+.my_shell_history*
